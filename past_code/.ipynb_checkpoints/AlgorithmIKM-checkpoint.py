@@ -1,6 +1,7 @@
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 from Image import Image
 from Algorithm import Algorithm
@@ -15,23 +16,18 @@ class AlgorithmIKM(Algorithm):
                  rho: float = 1) -> None:
         super().__init__(image, "Inertial Krasnoselskii-Mann Iterations")
         
-        if intertial:
-            self.get_alpha = lambda k: (1-1/k) * alpha
-        else:
-            self.get_alpha = lambda k: alpha
-
+        # Load mask methods from image
+        self.__A = image.mask_image
+        
+        # Create parameters for the iterations
+        if intertial: self.get_alpha = lambda k: (1-1/k) * alpha
+        else: self.get_alpha = lambda k: alpha
         self.lamb = lamb
         self.rho = rho
                 
+        # Set initial values
         self.Z0 = self.Z_corrupt
         self.Z1 = self.Z_corrupt
-        
-    def __T(self, Z: list) -> list:
-        """ @private
-        Computes the linear operator T
-        """
-        return Z - self.__prox_g(Z) +  self.__prox_f(2 * self.__prox_g(Z) - Z - 
-                                 self.rho * self._A_adj(self.__grad_h(self.__prox_g(Z))))
         
     def __prox_f(self, Z: list) -> list:
         """ @private
@@ -39,8 +35,6 @@ class AlgorithmIKM(Algorithm):
         If Z_(1) = U @ S @ V^T (SVD Decomposition) then prox_(rho*f)(Z) = U @ S_shrink @ V^T
         """
         U, S, VT = np.linalg.svd(self._getZ1(Z), full_matrices=False)
-        if S.min() < 0:
-            print("PROBLEM IN SVD:", S.min())
         S_shrink = np.maximum(S - self.rho, 0)
         return self._ungetZ1((U * S_shrink) @ VT)
 
@@ -50,8 +44,6 @@ class AlgorithmIKM(Algorithm):
         If Z_(2) = U @ S @ V^T (SVD Decomposition) then prox_(rho*g)(Z) = U @ S_shrink @ V^T
         """
         U, S, VT = np.linalg.svd(self._getZ2(Z), full_matrices=False)
-        if S.min() < 0:
-            print("PROBLEM IN SVD:", S.min())
         S_shrink = np.maximum(S - self.rho, 0)
         return self._ungetZ2((U * S_shrink) @ VT)
 

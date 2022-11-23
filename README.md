@@ -1,1 +1,1 @@
-# Inertial-Krasnoselskii-Mann-Iterations-for-Image-In-Painting
+# Optimization Methods for Image Inpainting
