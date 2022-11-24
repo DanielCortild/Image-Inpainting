@@ -1,6 +1,5 @@
 from PIL import Image as ImagePIL
 import numpy as np
-import scipy as sp
 import matplotlib.pyplot as plt
 
 class Image:

@@ -1,8 +1,8 @@
 import numpy as np
 import scipy as sp
 import scipy.linalg
-from Image import Image
 
+from Image import Image
 from Algorithm import Algorithm
 
 class InPainter:
@@ -13,8 +13,8 @@ class InPainter:
         image                 An instance of Image, to be inpainted
         alpha                 Initial value for alpha (Default: 1)
         alpha_static          Whether alpha is static or not (Default: True)
-        lamb                  Value of lambda (Default: 1)
-        rho                   Value of rho (Default: 1)
+        lamb                  Value of lambda in (0,1) (Default: 0.5)
+        rho                   Value of rho in (0,2) (Default: 1)
     Public Methods:
         run                   Runs the algorithm 
     Protected Methods:
@@ -28,7 +28,7 @@ class InPainter:
                  image: Image, 
                  alpha: float = 1,
                  alpha_static: bool = True,
-                 lamb: float = 1,
+                 lamb: float = 0.5,
                  rho: float = 1) -> None:
 
         # Set methods to be used in the Algorithm
@@ -73,19 +73,26 @@ class InPainter:
         """
         return Z - self.Z_corrupt
     
+    def __get_alpha(self, k: int) -> float:
+        """ @private
+        Get the value of alpha at the kth iteration
+        """
+        return self.alpha if self.alpha_static else (1-1/k) * self.alpha
+    
+    def __T(self, Y: list) -> list:
+        """ @private
+        The linear operator T of which we want to find a fixed point
+        """
+        Yg = self.__prox_g(Y, self.rho)
+        return Y - Yg + self.__prox_f(2 * Yg - Y - self.rho * self.__A_adj(self.__grad_h(self.__A(Yg))), self.rho)
+    
     def run(self, iterations: int) -> list:
         """ @public
         Run a certain amount of iterations of the Algorithm
         """
-        Alg = Algorithm(prox_f = self.__prox_f, 
-                        prox_g = self.__prox_g, 
-                        grad_h = self.__grad_h,
-                        L = self.__A,
-                        L_adj = self.__A_adj,
-                        Z0 = self.Z_corrupt,
-                        Z1 = self.Z_corrupt,
-                        alpha = 1,
-                        alpha_static = False,
-                        lamb = 1,
-                        rho = 1)
-        return Alg.run(iterations)
+        sol = Algorithm( T = self.__T,
+                         Z0 = self.Z_corrupt,
+                         Z1 = self.Z_corrupt,
+                         lamb = self.lamb,
+                         get_alpha = self.__get_alpha).run(iterations)
+        return sol
