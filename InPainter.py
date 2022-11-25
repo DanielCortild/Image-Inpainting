@@ -22,11 +22,13 @@ class InPainter:
         prox_f                The proximal operator of the f(Z) = nuclear norm of Z_(1)
         prox_g                The proximal operator of the g(Z) = nuclear norm of Z_(2)
         grad_h                Gradient of the function h(Z) = 1/2 |Z-Z_corrupt|_F^2
+        compute_alpha         Compute the value of alpha according to (29)
+        get_alpha             Get the value of alpha for the given iteration
+        T                     The linear operator linked to the problem
     """
     
     def __init__(self, 
                  image: Image, 
-                 alpha: float = 1,
                  alpha_static: bool = True,
                  lamb: float = 0.5,
                  rho: float = 1) -> None:
@@ -40,7 +42,7 @@ class InPainter:
         self.__ungetZ2 = image.ungetZ2
         
         # Set parameters to be used in the Algorithm
-        self.alpha = alpha
+        self.alpha = self.__compute_alpha(rho, 1, lamb) # beta = 1
         self.alpha_static = alpha_static
         self.lamb = lamb
         self.rho = rho
@@ -73,11 +75,20 @@ class InPainter:
         """
         return Z - self.Z_corrupt
     
+    def __compute_alpha(self, rho: float, beta: float, lamb: float) -> float:
+        """ @private
+        Compute the critical value of alpha verifying (29)
+        """
+        gamma = 2 * beta / (4 * beta - rho)
+        eta = lamb * gamma
+        if abs(eta - 1/2) < 1e-6: return 1/3
+        return ( eta-2 + np.sqrt((eta-2)**2 - 4 * (eta-1) * (2*eta-1)) ) / (2*(2*eta-1))
+    
     def __get_alpha(self, k: int) -> float:
         """ @private
         Get the value of alpha at the kth iteration
         """
-        return self.alpha if self.alpha_static else (1-1/k) * self.alpha
+        return self.alpha if self.alpha_static else (1-1/(k+1)) * self.alpha
     
     def __T(self, Y: list) -> list:
         """ @private
@@ -86,13 +97,15 @@ class InPainter:
         Yg = self.__prox_g(Y, self.rho)
         return Y - Yg + self.__prox_f(2 * Yg - Y - self.rho * self.__A_adj(self.__grad_h(self.__A(Yg))), self.rho)
     
-    def run(self, iterations: int) -> list:
+    def run(self, max_iterations: int, tolerance: float, verbose: bool = False) -> list:
         """ @public
         Run a certain amount of iterations of the Algorithm
         """
-        sol = Algorithm( T = self.__T,
-                         Z0 = self.Z_corrupt,
-                         Z1 = self.Z_corrupt,
-                         lamb = self.lamb,
-                         get_alpha = self.__get_alpha).run(iterations)
-        return sol
+        Alg = Algorithm(T = self.__T,
+                        Z0 = self.Z_corrupt,
+                        Z1 = self.Z_corrupt,
+                        lamb = self.lamb,
+                        get_alpha = self.__get_alpha)
+        Z_sol, its = Alg.run(max_iterations, tolerance, verbose)
+        sol = self.__prox_g(Z_sol, self.rho)
+        return sol, its

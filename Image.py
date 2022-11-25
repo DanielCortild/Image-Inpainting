@@ -115,14 +115,14 @@ class Image:
         Z[:, :, 2] = Z2[2*N:, :]
         return Z
     
-    def visualize(self, solution: list, title: str = "") -> None:
+    def visualize(self, solution1: list, solution2: list = None, title: str = "") -> None:
         """ @public
         Visualize the results by plotting the following three images:
         - The original image, technically unaccessible
         - The in-painted image, technically the only one accessible
         - The corrected image
         """
-        fig, axs = plt.subplots(1, 3, figsize=(12, 4), dpi=300)
+        fig, axs = plt.subplots(1, 4 if solution2 else 3, figsize=(12, 3.3 if solution2 else 4), dpi=600)
         fig.suptitle(title, fontsize=18)
         axs[0].title.set_text("Original Image")
         axs[0].imshow(self.image_original)
@@ -130,7 +130,11 @@ class Image:
         axs[1].title.set_text(f"In-Painted Image ({self.ratio * 100} %)")
         axs[1].imshow(self.image_masked)
         axs[1].set_axis_off()
-        axs[2].title.set_text(f"Corrected Image")
-        axs[2].imshow(solution)
+        axs[2].title.set_text(solution1[1])
+        axs[2].imshow(solution1[0])
         axs[2].set_axis_off()
+        if solution2:
+            axs[3].title.set_text(solution2[1])
+            axs[3].imshow(solution2[0])
+            axs[3].set_axis_off()
         plt.show()

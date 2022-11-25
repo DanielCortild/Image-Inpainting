@@ -1,4 +1,6 @@
-from tqdm import tqdm
+import numpy as np
+from tqdm.auto import trange
+import tqdm
 
 from Image import Image
 
@@ -20,6 +22,7 @@ class Algorithm:
     Protected Methods:
     Private Methods:
         iterate               Runs a single iteration of the algorithm
+        R                     Error estimate used for stopping criterion
     """
     
     def __init__(self, 
@@ -55,11 +58,19 @@ class Algorithm:
         
         return Z1, Z2
     
-    def run(self, iterations: int) -> list:
+    def __R(self, Z0: list, Z1: list) -> float:
+        """ @private
+        Error estimate used for stopping criterion
+        """
+        return np.linalg.norm(Z1 - Z0) / np.linalg.norm(Z0)
+    
+    def run(self, max_iterations: int, tolerance: float, verbose: bool = False) -> list:
         """ @public
         Run the algorithm given the number of iterations and the iterator
         """
         Z0, Z1 = self.Z0, self.Z1
-        for i in tqdm(range(iterations)):
-            Z0, Z1 = self.__iterate(Z0, Z1, i + 1)
-        return Z1
+        for i in trange(max_iterations, disable=not verbose):
+            Z0, Z1 = self.__iterate(Z0, Z1, i)
+            if self.__R(Z0, Z1) < tolerance:
+                break
+        return Z1, i + 1
