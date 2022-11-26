@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+Experiment.py - Implements certain experiments to select the parameters
+~ Daniel Cortild, 26 November 2022
+"""
+
 # External Imports
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,16 +18,33 @@ import multiprocessing
 from .InPainter import InPainter
 from .Image import Image
 
-class SelectionExperiment:
+class Experiment:
+    """
+    Creates a Experiment which allows to select a specific parameter for the Algorithm described.
+    Parameters:
+        var_list              List of variables to test against others fixed
+    Public Methods:
+        run                   Runs the experiment 
+    Protected Methods:
+    Private Methods:
+        run_single            Runs a single time the algorithm
+        run                   Runs all the algorithms
+        plot                  Plot the number of iterations and the time taken
+        print                 Print the number of iterations and the time taken
+    """
+    
     def __init__(self, var_list: list) -> None:
         # Define the experiment parameters
         self.var_list = var_list
         self.var_name = ""
-        self.lamb = 1
+        self.lamb = 0.5
         self.rho = 1
         self.ratio = 0.5
 
     def __run_single(self, i: int, alpha_static: float, max_it: int, tol: float) -> tuple:
+        """ @private
+        Runs a single time the algorithm
+        """
         var = self.var_list[i]
         
         if self.var_name == "ratio":
@@ -36,6 +60,9 @@ class SelectionExperiment:
         return its, times
     
     def __run(self, max_it: int, tol: float) -> float:
+        """ @private
+        Runs all the algorithms
+        """
         its_list_static = np.zeros_like(self.var_list)
         time_list_static = np.zeros_like(self.var_list)
         its_list_inertial = np.zeros_like(self.var_list)
@@ -60,6 +87,9 @@ class SelectionExperiment:
                max_iterations: int, 
                tolerance: float,
                title: str = "") -> None:
+        """ @private
+        Plot the number of iterations and the time taken
+        """
         # General Figure
         fig, axs = plt.subplots(1, 2, figsize=(12, 4), dpi=300)
         fig.suptitle(title, fontsize=16, y=1.04)
@@ -88,13 +118,10 @@ class SelectionExperiment:
         
         plt.show()
         
-    def run(self, max_iterations: int, tolerance: float, title: str = ""):
-        its_static, its_inertial, times_static, times_inertial = self.__run(max_iterations, tolerance)
-        self.__plot(its_static, its_inertial, times_static, times_inertial, max_iterations, tolerance, title)
-        self.__print(its_static, its_inertial, times_static, times_inertial)
-        
-        
     def __print(self, its_static: list, its_inertial: list, times_static: list, times_inertial: list) -> None:
+        """ @private
+        Print the number of iterations and the time taken
+        """
         data = np.zeros((len(self.var_list), 5))
         data[:, 0] = self.var_list
         data[:, 1] = its_static
@@ -102,9 +129,28 @@ class SelectionExperiment:
         data[:, 3] = its_inertial
         data[:, 4] = times_inertial
         print(tabulate(data, headers=[self.var_name, "Its Static", "Time Static", "Its Inertial", "Time Inertial"])) 
+        
+    def run(self, max_iterations: int, tolerance: float, title: str = ""):
+        """ @public
+        Runs the experiment and prints out the resulting data
+        """
+        its_static, its_inertial, times_static, times_inertial = self.__run(max_iterations, tolerance)
+        self.__plot(its_static, its_inertial, times_static, times_inertial, max_iterations, tolerance, title)
+        self.__print(its_static, its_inertial, times_static, times_inertial)
 
         
-class SelectionExperimentRho ( SelectionExperiment ):
+class ExperimentRho ( Experiment ):
+    """
+    Tests various values of rho against others fixed.
+    Parameters:
+        var_list              List of rhos to test against others fixed
+        lamb                  Fixed value of lambda
+        ratio                 Fixed value of ratio
+    Public Methods:
+    Protected Methods:
+    Private Methods:
+    """
+        
     def __init__(self,
                  var_list: list,
                  lamb: float = 1,
@@ -119,7 +165,18 @@ class SelectionExperimentRho ( SelectionExperiment ):
         self.legend_loc = 1
         
         
-class SelectionExperimentRatio ( SelectionExperiment ):
+class ExperimentRatio ( Experiment ):
+    """
+    Tests various values of ratio against others fixed.
+    Parameters:
+        var_list              List of ratios to test against others fixed
+        lamb                  Fixed value of lambda
+        rho                   Fixed value of rho
+    Public Methods:
+    Protected Methods:
+    Private Methods:
+    """
+        
     def __init__(self,
                  var_list: list,
                  lamb: float = 1,
@@ -133,7 +190,18 @@ class SelectionExperimentRatio ( SelectionExperiment ):
         self.var_name = "ratio"
         self.legend_loc = 2
         
-class SelectionExperimentLambda ( SelectionExperiment ):
+class ExperimentLambda ( Experiment ):
+    """
+    Tests various values of lambdas against others fixed.
+    Parameters:
+        var_list              List of lambdas to test against others fixed
+        ratio                 Fixed value of ratio
+        rho                   Fixed value of rho
+    Public Methods:
+    Protected Methods:
+    Private Methods:
+    """
+    
     def __init__(self,
                  var_list: list,
                  ratio: float = 1,

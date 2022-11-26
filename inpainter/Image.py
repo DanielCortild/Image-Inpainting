@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+Image.py - Implements an Image Class with Masking Options
+~ Daniel Cortild, 26 November 2022
+"""
+
+# External Imports
 from PIL import Image as ImagePIL
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,13 +20,13 @@ class Image:
         resize                If contains values, should contain a pair of integers, size
                               to which the image should be resize (Default: False)
     Public Methods:
-        visualize             Visualized the original, masked and corrected image
         mask_image            Masks an image according to the created mask
+        get_image_masked      Get the masked image
         getZ1                 Get the transformed image into a specific form
         ungetZ1               Undoes getZ1
         getZ2                 Get the transformed image into a specific form
         ungetZ2               Undoes getZ2
-        get_image_masked      Get the masked image
+        visualize             Visualized the original, masked and corrected image
     Protected Methods:
     Private Methods:
         resize                Resizes the image to a specific size

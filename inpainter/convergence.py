@@ -1,8 +1,19 @@
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+convergence.py - Implements a function that plots several convergence plots
+~ Daniel Cortild, 26 November 2022
+"""
+
+
 # External Imports
 import matplotlib.pyplot as plt
 import numpy as np
 
 def plot_convergence(conv_static: list, conv_inertial: list) -> None:
+    """
+    Create plots for convergence analysis
+    """
     # Plot Converge of Solutions
     fig, axs = plt.subplots(1, 2, figsize=(12, 4), dpi=300)
     fig.suptitle("Convergence of Solutions", fontsize=16, y=1.04)

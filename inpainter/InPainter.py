@@ -1,9 +1,21 @@
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+InPainter.py - Implements the InPainter Class, which solves the InPainting problem 
+               according to certain parameters
+~ Daniel Cortild, 26 November 2022
+"""
+
+# External Imports
 import numpy as np
 import scipy as sp
 import scipy.linalg
+import warnings
 
+# Internal Imports
 from .Image import Image
 from .Algorithm import Algorithm
+
 
 class InPainter:
     """
@@ -11,7 +23,6 @@ class InPainter:
     iterations, combined with a Bregman iteration.
     Parameters:
         image                 An instance of Image, to be inpainted
-        alpha                 Initial value for alpha (Default: 1)
         alpha_static          Whether alpha is static or not (Default: True)
         lamb                  Value of lambda in (0,1) (Default: 0.5)
         rho                   Value of rho in (0,2) (Default: 1)
@@ -19,6 +30,7 @@ class InPainter:
         run                   Runs the algorithm 
     Protected Methods:
     Private Methods:
+        check                 Checks if all parameters are in correct range
         prox_f                The proximal operator of the f(Z) = nuclear norm of Z_(1)
         prox_g                The proximal operator of the g(Z) = nuclear norm of Z_(2)
         grad_h                Gradient of the function h(Z) = 1/2 |Z-Z_corrupt|_F^2
@@ -42,6 +54,7 @@ class InPainter:
         self.__ungetZ2 = image.ungetZ2
         
         # Set parameters to be used in the Algorithm
+        self.__check(lamb, rho)
         self.alpha_static = alpha_static
         self.alpha = self.__compute_alpha(rho, 1, lamb) # beta = 1
         self.lamb = lamb
@@ -49,6 +62,17 @@ class InPainter:
         
         # Set the corrupt image
         self.Z_corrupt = image.get_image_masked()
+        
+        
+    def __check(self, lamb: float, rho: float) -> None:
+        """ @private
+        Checks if the parameters are in the correct range
+        """
+        if lamb <= 0 or lamb >= 1:
+            warnings.warn("Value of lambda is not in (0,1), thus convergence cannot be asssured")
+        if rho <= 0 or rho >= 2:
+            warnings.warn("Value of rho is not in (0,2), thus convergence cannot be asssured")
+    
     
     def __prox_f(self, Z: list, rho: float) -> list:
         """ @private
@@ -59,6 +83,7 @@ class InPainter:
         S_shrink = np.maximum(S - rho, 0)
         return self.__ungetZ1((U * S_shrink) @ VT)
 
+    
     def __prox_g(self, Z: list, rho: float) -> list:
         """ @private
         g(Z) = |Z_(2)|_* (Nuclear Norm of Z_(2))
@@ -68,12 +93,14 @@ class InPainter:
         S_shrink = np.maximum(S - rho, 0)
         return self.__ungetZ2((U * S_shrink) @ VT)
 
+    
     def __grad_h(self, Z: list) -> list:
         """ @private
         h(Z) = |Z-Z_corrupt|^2/2
         grad(h)(Z) = Z-Z_corrupt
         """
         return Z - self.Z_corrupt
+    
     
     def __compute_alpha(self, rho: float, beta: float, lamb: float) -> float:
         """ @private
@@ -84,11 +111,13 @@ class InPainter:
         if abs(eta - 1/2) < 1e-6: return 1/3
         return ( eta-2 + np.sqrt((eta-2)**2 - 4 * (eta-1) * (2*eta-1)) ) / (2*(2*eta-1))
     
+    
     def __get_alpha(self, k: int) -> float:
         """ @private
         Get the value of alpha at the kth iteration
         """
-        return 0 if self.alpha_static else (self.alpha if self.alpha_static else (1-1/(k+1)) * self.alpha)
+        return 0 if self.alpha_static else (1-1/(k+1)) * self.alpha
+    
     
     def __T(self, Y: list) -> list:
         """ @private
@@ -96,6 +125,7 @@ class InPainter:
         """
         Yg = self.__prox_g(Y, self.rho)
         return Y - Yg + self.__prox_f(2 * Yg - Y - self.rho * self.__A_adj(self.__grad_h(self.__A(Yg))), self.rho)
+    
     
     def run(self, max_iterations: int, tolerance: float, verbose: bool = False) -> list:
         """ @public

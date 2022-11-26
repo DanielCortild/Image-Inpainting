@@ -1,7 +1,15 @@
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+Algorithm.py - Implements an Algorithm based on Inertial Krasnoselskii-Mann Iterations
+~ Daniel Cortild, 26 November 2022
+"""
+
+# External imports
 import numpy as np
 from tqdm.auto import trange
-import tqdm
 
+# Internal Imports
 from .Image import Image
 
 class Algorithm:
