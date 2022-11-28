@@ -7,16 +7,17 @@ Experiment.py - Implements certain experiments to select the parameters
 
 # External Imports
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # type: ignore
 import time
-from tqdm.auto import trange
-import pandas
-from tabulate import tabulate
-import multiprocessing
+from tqdm.auto import trange #type: ignore
+import pandas #type: ignore
+from tabulate import tabulate #type: ignore
+from typing import List, Tuple
 
 # Internal Imports
 from .InPainter import InPainter
 from .Image import Image
+
 
 class Experiment:
     """
@@ -25,7 +26,6 @@ class Experiment:
         var_list              List of variables to test against others fixed
     Public Methods:
         run                   Runs the experiment 
-    Protected Methods:
     Private Methods:
         run_single            Runs a single time the algorithm
         run                   Runs all the algorithms
@@ -33,40 +33,41 @@ class Experiment:
         print                 Print the number of iterations and the time taken
     """
     
-    def __init__(self, var_list: list) -> None:
+    def __init__(self, var_list: List[float]) -> None:
         # Define the experiment parameters
-        self.var_list = var_list
-        self.var_name = ""
-        self.lamb = 0.5
-        self.rho = 1
-        self.ratio = 0.5
+        self.var_list: List[float] = var_list
+        self.var_name: str = ""
+        self.lamb: float = 0.5
+        self.rho: float = 1
+        self.ratio: float = 0.5
+        self.legend_loc: int = 1
 
-    def __run_single(self, i: int, alpha_static: float, max_it: int, tol: float) -> tuple:
+    def __run_single(self, i: int, alpha_static: bool, max_it: int, tol: float) -> Tuple[int, float]:
         """ @private
         Runs a single time the algorithm
         """
-        var = self.var_list[i]
+        var: float = self.var_list[i]
         
         if self.var_name == "ratio":
             self.ratio = var
         if self.var_name == "rho":
             self.rho = var
             
-        Img = Image(image="Houses.jpeg", ratio = self.ratio, resize=(512, 512))
-        start = time.time()
-        IP = InPainter(Img, alpha_static = alpha_static, lamb = self.lamb, rho = self.rho)
-        its = IP.run(max_it, tol)[1]
-        times = time.time() - start
+        Img: Image = Image(image="Houses.jpeg", ratio = self.ratio, resize = (512, 512))
+        start: float = time.time()
+        IP: InPainter = InPainter(Img, alpha_static = alpha_static, lamb = self.lamb, rho = self.rho)
+        its: int = IP.run(max_it, tol)[1]
+        times: float = time.time() - start
         return its, times
     
-    def __run(self, max_it: int, tol: float) -> float:
+    def __run(self, max_it: int, tol: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """ @private
         Runs all the algorithms
         """
-        its_list_static = np.zeros_like(self.var_list)
-        time_list_static = np.zeros_like(self.var_list)
-        its_list_inertial = np.zeros_like(self.var_list)
-        time_list_inertial = np.zeros_like(self.var_list)
+        its_list_static: np.ndarray = np.zeros_like(self.var_list)
+        time_list_static: np.ndarray = np.zeros_like(self.var_list)
+        its_list_inertial: np.ndarray = np.zeros_like(self.var_list)
+        time_list_inertial: np.ndarray = np.zeros_like(self.var_list)
         
         # Run the Static Algorithm for every value of rho
         for i in trange(len(self.var_list), unit=f"Value of {self.var_name}", desc="Static Alpha", leave=False):
@@ -80,10 +81,10 @@ class Experiment:
         return its_list_static, its_list_inertial, time_list_static, time_list_inertial
     
     def __plot(self, 
-               its_static: list, 
-               its_inertial: list, 
-               times_static: list,
-               times_inertial: list,
+               its_static: np.ndarray, 
+               its_inertial: np.ndarray, 
+               times_static: np.ndarray,
+               times_inertial: np.ndarray,
                max_iterations: int, 
                tolerance: float,
                title: str = "") -> None:
@@ -118,11 +119,15 @@ class Experiment:
         
         plt.show()
         
-    def __print(self, its_static: list, its_inertial: list, times_static: list, times_inertial: list) -> None:
+    def __print(self, 
+                its_static: np.ndarray, 
+                its_inertial: np.ndarray, 
+                times_static: np.ndarray, 
+                times_inertial: np.ndarray) -> None:
         """ @private
         Print the number of iterations and the time taken
         """
-        data = np.zeros((len(self.var_list), 5))
+        data: np.ndarray = np.zeros((len(self.var_list), 5))
         data[:, 0] = self.var_list
         data[:, 1] = its_static
         data[:, 2] = times_static
@@ -152,17 +157,17 @@ class ExperimentRho ( Experiment ):
     """
         
     def __init__(self,
-                 var_list: list,
+                 var_list: List[float],
                  lamb: float = 1,
                  ratio: float = 0.5) -> None:
         # Define the experiment parameters
         super().__init__(var_list)
-        self.lamb = lamb
-        self.ratio = ratio
+        self.lamb: float = lamb
+        self.ratio: float = ratio
         
         # Metadata for various plots and methods
-        self.var_name = "rho"
-        self.legend_loc = 1
+        self.var_name: str = "rho"
+        self.legend_loc: int = 1
         
         
 class ExperimentRatio ( Experiment ):
@@ -178,17 +183,17 @@ class ExperimentRatio ( Experiment ):
     """
         
     def __init__(self,
-                 var_list: list,
+                 var_list: List[float],
                  lamb: float = 1,
                  rho: float = 1) -> None:
         # Define the experiment
         super().__init__(var_list)
-        self.lamb = lamb
-        self.rho = rho
+        self.lamb: float = lamb
+        self.rho: float = rho
         
         # Metadata for various plots and methods
-        self.var_name = "ratio"
-        self.legend_loc = 2
+        self.var_name: str = "ratio"
+        self.legend_loc: int = 2
         
 class ExperimentLambda ( Experiment ):
     """
@@ -203,14 +208,14 @@ class ExperimentLambda ( Experiment ):
     """
     
     def __init__(self,
-                 var_list: list,
+                 var_list: List[float],
                  ratio: float = 1,
                  rho: float = 1) -> None:
         # Define the experiment
         super().__init__(var_list)
-        self.ratio = ratio
-        self.rho = rho
+        self.ratio: float = ratio
+        self.rho: float = rho
         
         # Metadata for various plots and methods
-        self.var_name = "lambda"
-        self.legend_loc = 2
+        self.var_name: str = "lambda"
+        self.legend_loc: int = 2

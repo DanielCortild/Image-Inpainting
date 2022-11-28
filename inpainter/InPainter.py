@@ -8,9 +8,10 @@ InPainter.py - Implements the InPainter Class, which solves the InPainting probl
 
 # External Imports
 import numpy as np
-import scipy as sp
-import scipy.linalg
+import scipy as sp    # type: ignore
+import scipy.linalg   # type: ignore
 import warnings
+from typing import Callable, Tuple, List
 
 # Internal Imports
 from .Image import Image
@@ -28,7 +29,6 @@ class InPainter:
         rho                   Value of rho in (0,2) (Default: 1)
     Public Methods:
         run                   Runs the algorithm 
-    Protected Methods:
     Private Methods:
         check                 Checks if all parameters are in correct range
         prox_f                The proximal operator of the f(Z) = nuclear norm of Z_(1)
@@ -46,25 +46,26 @@ class InPainter:
                  rho: float = 1) -> None:
 
         # Set methods to be used in the Algorithm
-        self.__A = image.mask_image
-        self.__A_adj = image.mask_image
-        self.__getZ1 = image.getZ1
-        self.__ungetZ1 = image.ungetZ1
-        self.__getZ2 = image.getZ2
-        self.__ungetZ2 = image.ungetZ2
+        self.__A: Callable[[np.ndarray], np.ndarray] = image.mask_image
+        self.__A_adj: Callable[[np.ndarray], np.ndarray] = image.mask_image
+        self.__getZ1: Callable[[np.ndarray], np.ndarray] = image.getZ1
+        self.__ungetZ1: Callable[[np.ndarray], np.ndarray] = image.ungetZ1
+        self.__getZ2: Callable[[np.ndarray], np.ndarray] = image.getZ2
+        self.__ungetZ2: Callable[[np.ndarray], np.ndarray] = image.ungetZ2
         
         # Set parameters to be used in the Algorithm
         self.__check(lamb, rho)
-        self.alpha_static = alpha_static
-        self.alpha = self.__compute_alpha(rho, 1, lamb) # beta = 1
-        self.lamb = lamb
-        self.rho = rho
+        self.alpha_static: bool = alpha_static
+        self.alpha: float = self.__compute_alpha(rho, 1, lamb) # beta = 1
+        self.lamb: float = lamb
+        self.rho: float = rho
         
         # Set the corrupt image
-        self.Z_corrupt = image.get_image_masked()
+        self.Z_corrupt: np.ndarray = image.get_image_masked()
         
         
-    def __check(self, lamb: float, rho: float) -> None:
+    @staticmethod
+    def __check(lamb: float, rho: float) -> None:
         """ @private
         Checks if the parameters are in the correct range
         """
@@ -74,27 +75,29 @@ class InPainter:
             warnings.warn("Value of rho is not in (0,2), thus convergence cannot be asssured")
     
     
-    def __prox_f(self, Z: list, rho: float) -> list:
+    def __prox_f(self, Z: np.ndarray, rho: float) -> np.ndarray:
         """ @private
         f(Z) = |Z_(1)|_* (Nuclear Norm of Z_(1))
         If Z_(1) = U @ S @ V^T (SVD Decomposition) then prox_(rho*f)(Z) = U @ S_shrink @ V^T
         """
+        U: np.ndarray; S: np.ndarray; VT: np.ndarray
         U, S, VT = sp.linalg.svd(self.__getZ1(Z), full_matrices=False)
-        S_shrink = np.maximum(S - rho, 0)
+        S_shrink: np.ndarray = np.maximum(S - rho, 0)
         return self.__ungetZ1((U * S_shrink) @ VT)
 
     
-    def __prox_g(self, Z: list, rho: float) -> list:
+    def __prox_g(self, Z: np.ndarray, rho: float) -> np.ndarray:
         """ @private
         g(Z) = |Z_(2)|_* (Nuclear Norm of Z_(2))
         If Z_(2) = U @ S @ V^T (SVD Decomposition) then prox_(rho*g)(Z) = U @ S_shrink @ V^T
         """
+        U: np.ndarray; S: np.ndarray; VT: np.ndarray
         U, S, VT = sp.linalg.svd(self.__getZ2(Z), full_matrices=False)
-        S_shrink = np.maximum(S - rho, 0)
+        S_shrink: np.ndarray = np.maximum(S - rho, 0)
         return self.__ungetZ2((U * S_shrink) @ VT)
 
     
-    def __grad_h(self, Z: list) -> list:
+    def __grad_h(self, Z: np.ndarray) -> np.ndarray:
         """ @private
         h(Z) = |Z-Z_corrupt|^2/2
         grad(h)(Z) = Z-Z_corrupt
@@ -102,12 +105,13 @@ class InPainter:
         return Z - self.Z_corrupt
     
     
-    def __compute_alpha(self, rho: float, beta: float, lamb: float) -> float:
+    @staticmethod
+    def __compute_alpha(rho: float, beta: float, lamb: float) -> float:
         """ @private
         Compute the critical value of alpha verifying (29)
         """
-        gamma = 2 * beta / (4 * beta - rho)
-        eta = lamb * gamma
+        gamma: float = 2 * beta / (4 * beta - rho)
+        eta: float = lamb * gamma
         if abs(eta - 1/2) < 1e-6: return 1/3
         return ( eta-2 + np.sqrt((eta-2)**2 - 4 * (eta-1) * (2*eta-1)) ) / (2*(2*eta-1))
     
@@ -119,15 +123,15 @@ class InPainter:
         return 0 if self.alpha_static else (1-1/(k+1)) * self.alpha
     
     
-    def __T(self, Y: list) -> list:
+    def __T(self, Y: np.ndarray) -> np.ndarray:
         """ @private
         The linear operator T of which we want to find a fixed point
         """
-        Yg = self.__prox_g(Y, self.rho)
+        Yg: np.ndarray = self.__prox_g(Y, self.rho)
         return Y - Yg + self.__prox_f(2 * Yg - Y - self.rho * self.__A_adj(self.__grad_h(self.__A(Yg))), self.rho)
     
     
-    def run(self, max_iterations: int, tolerance: float, verbose: bool = False) -> list:
+    def run(self, max_iterations: int, tolerance: float, verbose: bool = False) -> Tuple[np.ndarray, int, List[float]]:
         """ @public
         Run a certain amount of iterations of the Algorithm
         """

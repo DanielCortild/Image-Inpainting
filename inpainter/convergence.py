@@ -7,10 +7,12 @@ convergence.py - Implements a function that plots several convergence plots
 
 
 # External Imports
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # type: ignore
 import numpy as np
+from typing import List
 
-def plot_convergence(conv_static: list, conv_inertial: list) -> None:
+
+def plot_convergence(conv_static: List[float], conv_inertial: List[float]) -> None:
     """
     Create plots for convergence analysis
     """

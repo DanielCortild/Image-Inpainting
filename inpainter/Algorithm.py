@@ -7,7 +7,8 @@ Algorithm.py - Implements an Algorithm based on Inertial Krasnoselskii-Mann Iter
 
 # External imports
 import numpy as np
-from tqdm.auto import trange
+from tqdm.auto import trange              # type: ignore
+from typing import Tuple, Callable, List
 
 # Internal Imports
 from .Image import Image
@@ -27,56 +28,57 @@ class Algorithm:
         get_alpha             Nondecreasing sequence in [0,1) getting the value of alpha at iteration k
     Public Methods:
         run                   Runs the algorithm 
-    Protected Methods:
     Private Methods:
         iterate               Runs a single iteration of the algorithm
         R                     Error estimate used for stopping criterion
     """
     
+    
     def __init__(self, 
-                 T: callable,
-                 Z0: list,
-                 Z1: list,
+                 T: Callable[[np.ndarray], np.ndarray],
+                 Z0: np.ndarray,
+                 Z1: np.ndarray,
                  lamb: float,
-                 get_alpha: callable) -> None:
+                 get_alpha: Callable[[int], float]) -> None:
         
         # Store the given functions
-        self.__T = T
+        self.__T: Callable[[np.ndarray], np.ndarray] = T
         
         # Create parameters for the iterations
-        self.__get_alpha = get_alpha
-        self.lamb = lamb
+        self.__get_alpha: Callable[[int], float] = get_alpha
+        self.__lamb: float = lamb
                 
         # Set initial values
-        self.Z0 = Z0
-        self.Z1 = Z1
+        self.__Z0: np.ndarray = Z0
+        self.__Z1: np.ndarray = Z1
         
-    def __iterate(self, Z0: list, Z1: list, k: int) -> tuple:
+    def __iterate(self, Z0: np.ndarray, Z1: np.ndarray, k: int) -> Tuple[np.ndarray, np.ndarray]:
         """ @private
         Perform the iterations according to Algorithm 2
         """
         # Inertial Step
-        Y = Z1 + self.__get_alpha(k) * (Z1 - Z0)
+        Y: np.ndarray = Z1 + self.__get_alpha(k) * (Z1 - Z0)
         
         # Krasnoselskii-Mann Step
-        Z2 = (1 - self.lamb) * Y + self.lamb * self.__T(Y)
+        Z2: np.ndarray = (1 - self.__lamb) * Y + self.__lamb * self.__T(Y)
         
         # Bregman Iteration
         # Yet to be implemented
         
         return Z1, Z2
     
-    def __R(self, Z0: list, Z1: list) -> float:
+    @staticmethod
+    def __R(Z0: np.ndarray, Z1: np.ndarray) -> float:
         """ @private
         Error estimate used for stopping criterion
         """
         return np.linalg.norm(Z1 - Z0) / np.linalg.norm(Z0)
     
-    def run(self, max_iterations: int, tolerance: float, verbose: bool = False) -> list:
+    def run(self, max_iterations: int, tolerance: float, verbose: bool = False) -> Tuple[np.ndarray, int, List[float]]:
         """ @public
         Run the algorithm given the number of iterations and the iterator
         """
-        Z0, Z1 = self.Z0, self.Z1
+        Z0, Z1 = self.__Z0, self.__Z1
         Z_conv_hist = []
         for i in trange(max_iterations, disable=not verbose):
             Z0, Z1 = self.__iterate(Z0, Z1, i)
