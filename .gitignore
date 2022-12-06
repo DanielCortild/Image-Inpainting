@@ -3,3 +3,5 @@ past_code/
 __pycache__/
 .DS_Store
 testing.ipynb
+testing.py
+test*

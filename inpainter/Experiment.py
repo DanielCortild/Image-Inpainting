@@ -15,7 +15,7 @@ from tabulate import tabulate #type: ignore
 from typing import List, Tuple
 
 # Internal Imports
-from .InPainter import InPainter
+from .inpainter import InPainter
 from .Image import Image
 
 
@@ -133,7 +133,7 @@ class Experiment:
         data[:, 2] = times_static
         data[:, 3] = its_inertial
         data[:, 4] = times_inertial
-        print(tabulate(data, headers=[self.var_name, "Its Static", "Time Static", "Its Inertial", "Time Inertial"])) 
+        print(tabulate(data, headers=[self.var_name, "Its Static", "Time Static", "Its Inertial", "Time Inertial"]))
         
     def run(self, max_iterations: int, tolerance: float, title: str = ""):
         """ @public
