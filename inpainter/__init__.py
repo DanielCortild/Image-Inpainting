@@ -6,8 +6,8 @@ __init__.py - __init__ file for the inpainter module
 """
 
 from .Image import Image
-from .algorithm import Algorithm
-from .inpainter import InPainter
+from .Algorithm import Algorithm
+from .InPainter import InPainter
 from .Experiment import ExperimentRho as ExpRho, \
                         ExperimentRatio as ExpRatio, \
                         ExperimentLambda as ExpLambda

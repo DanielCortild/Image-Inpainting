@@ -7,15 +7,15 @@ Experiment.py - Implements certain experiments to select the parameters
 
 # External Imports
 import numpy as np
-import matplotlib.pyplot as plt # type: ignore
+import matplotlib.pyplot as plt     # type: ignore
 import time
-from tqdm.auto import trange #type: ignore
-import pandas #type: ignore
-from tabulate import tabulate #type: ignore
+from tqdm.auto import trange        # type: ignore
+import pandas                       # type: ignore
+from tabulate import tabulate       # type: ignore
 from typing import List, Tuple
 
 # Internal Imports
-from .inpainter import InPainter
+from .InPainter import InPainter
 from .Image import Image
 
 
@@ -53,9 +53,9 @@ class Experiment:
         if self.var_name == "rho":
             self.rho = var
             
-        Img: Image = Image(image="Houses.jpeg", ratio = self.ratio, resize = (512, 512))
+        Img: Image = Image(image="Houses.jpeg", ratio=self.ratio, resize=(512, 512))
         start: float = time.time()
-        IP: InPainter = InPainter(Img, alpha_static = alpha_static, lamb = self.lamb, rho = self.rho)
+        IP: InPainter = InPainter(Img, alpha_static=alpha_static, lamb=self.lamb, rho=self.rho)
         its: int = IP.run(max_it, tol)[1]
         times: float = time.time() - start
         return its, times
@@ -99,12 +99,12 @@ class Experiment:
         axs[0].title.set_text(f"Iterations to reach {tolerance} tolerance")
         axs[0].set_xlabel(f"Value of {self.var_name}")
         axs[0].set_ylabel("Number of iterations")
-        axs[0].plot(self.var_list, its_static, label = "Static Iterations", color = "g")
-        axs[0].plot(self.var_list, its_inertial, label = "Inertial Iterations", color = "b")
+        axs[0].plot(self.var_list, its_static, label="Static Iterations", color="g")
+        axs[0].plot(self.var_list, its_inertial, label="Inertial Iterations", color="b")
         axs[0].plot(self.var_list[np.argmin(its_static)], np.min(its_static), 'go')
         axs[0].plot(self.var_list[np.argmin(its_inertial)], np.min(its_inertial), 'bo')
-        axs[0].axhline(y = max_iterations, color = "r", label = "Did not converge", linestyle = "--")
-        axs[0].legend(loc = self.legend_loc)
+        axs[0].axhline(y=max_iterations, color="r", label="Did not converge", linestyle="--")
+        axs[0].legend(loc=self.legend_loc)
         
         
         # Time plot
@@ -144,7 +144,7 @@ class Experiment:
         self.__print(its_static, its_inertial, times_static, times_inertial)
 
         
-class ExperimentRho ( Experiment ):
+class ExperimentRho (Experiment):
     """
     Tests various values of rho against others fixed.
     Parameters:
@@ -170,7 +170,7 @@ class ExperimentRho ( Experiment ):
         self.legend_loc: int = 1
         
         
-class ExperimentRatio ( Experiment ):
+class ExperimentRatio (Experiment):
     """
     Tests various values of ratio against others fixed.
     Parameters:
@@ -194,8 +194,9 @@ class ExperimentRatio ( Experiment ):
         # Metadata for various plots and methods
         self.var_name: str = "ratio"
         self.legend_loc: int = 2
-        
-class ExperimentLambda ( Experiment ):
+
+
+class ExperimentLambda (Experiment):
     """
     Tests various values of lambdas against others fixed.
     Parameters:
