@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-Image.py - Implements an Image Class with Masking Options
+Image.py - Implements an Image Class
 ~ Daniel Cortild, 26 November 2022
 """
 
@@ -18,16 +18,12 @@ class Image:
     to modify the image and mask other images according to the same mask.
     Parameters:
         image                 Name of image, located in the same directory as code file
-        ratio                 Ratio, between 0 and 1, of pixels to delete using the mask
+        ratio                 The ratio, between 0 and 1, of pixels to delete using the mask
         resize                If contains values, should contain a pair of integers, size
                               to which the image should be resize (Default: False)
     Public Methods:
         mask_image            Masks an image according to the created mask
         get_image_masked      Get the masked image
-        getZ1                 Get the transformed image into a specific form
-        ungetZ1               Undoes getZ1
-        getZ2                 Get the transformed image into a specific form
-        ungetZ2               Undoes getZ2
         visualize             Visualized the original, masked and corrected image
     Private Methods:
         resize                Resizes the image to a specific size
@@ -35,111 +31,108 @@ class Image:
     """
     
     def __init__(self, 
-                 image: str,
-                 ratio: float, 
-                 resize: Tuple[int, int] = (0, 0)) -> None:
-        
-        # Transform Image according to the parameters
-        self.image_pre: Any = ImagePIL.open(image)
-        if resize != (0, 0): self.__resize(*resize)
-        self.image_original: np.ndarray = np.asarray(self.image_pre, dtype=np.float64) / 255
-        
-        # Mask image according to the ratio parameter
-        self.ratio: float = ratio
-        self.mask: np.ndarray = self.__create_mask(self.image_original.shape[0], self.image_original.shape[1], ratio)
-        self.image_masked: np.ndarray = self.mask_image(self.image_original)
-       
-    
-    def __resize(self, width: int, height: int) -> None:
+                 image_string: str,
+                 image_dims: Tuple[int, int] = (256, 256)) -> None:
+        self.image_dims = image_dims
+        self.__load_image(image_string, image_dims)
+
+    def __load_image(self, image_string: str, image_dims: Tuple[int, int]) -> None:
         """ @private
-        Resize the image to a given size
+        Loads the image
         """
-        self.image_pre = self.image_pre.resize((width, height))
+        self.image: Any = ImagePIL.open(image_string)
+        self.image = self.image.resize(image_dims)
+        self.image = np.asarray(self.image, dtype=np.float64) / 255
+
+    def get_dimensions(self):
+        """ @public
+        Returns the dimensions of the image
+        """
+        return self.image_dims
+
+    def get_image(self):
+        """ @public
+        Returns the image as an array
+        """
+        return self.image
+
+    def show(self):
+        """
+        Prints the image to the console
+        """
+        fig, axs = plt.subplots(1, 1, figsize=(8, 8), dpi=600)
+        axs.title.set_text("Original Image")
+        axs.imshow(self.image, vmin=0, vmax=1)
+        axs.set_axis_off()
+        axs.set_facecolor("white")
+        plt.show()
+
         
-        
-    @staticmethod
-    def __create_mask(M: int, N: int, ratio: float) -> np.ndarray:
+class MaskedImage (Image):
+    """
+    Creates a mask and methods to mask images, as well as getting the specific mask
+    Parameters:
+    Public Methods:
+        mask_image                  Applies the mask to an image
+        get_image_masked            Returns the masked image
+        show                        Outputs the original and masked image
+    Private Methods:
+        create_mask                 Creates the mask to be applied
+    """
+
+    def __init__(self, image_string: str, image_size: Tuple[int, int] = (0, 0), erase_ratio: float = 0.5) -> None:
+        super().__init__(image_string, image_size)
+        self.__erase_ratio: float = erase_ratio
+        self.create_mask()
+        self.image_masked: np.ndarray = self.mask_image(self.get_image())
+
+    def create_mask(self) -> np.ndarray:
         """ @private
         Create the mask
         """
-        mask_size: int = int(N * M * ratio)
-        mask: np.ndarray = (np.array([0] * mask_size + [1] * (M * N - mask_size)))
+        dimensions: List[int] = self.get_dimensions()
+        total_pixels: int = np.prod(dimensions)
+        mask_size: int = int(total_pixels * self.__erase_ratio)
+        mask: np.ndarray = (np.array([0] * mask_size + [1] * (total_pixels - mask_size)))
         np.random.shuffle(mask)
-        return mask.reshape((N, M))
-       
-        
-    def mask_image(self, img: np.ndarray) -> np.ndarray:
+        self.mask = mask.reshape(dimensions)
+
+    def mask_image(self, image: np.ndarray) -> np.ndarray:
         """ @public
         Method encoding a linear operator selecting the pixels we know to be correct.
-        This operator is self adjoint, and could be coded to return a vector instead of a matrix, 
-        but that would not change the maths, and the opposite simplifies the coding.
+        Note this operator is self adjoint.
         """
-        img_masked: np.ndarray = np.zeros_like(img)
-        for i in range(3):
-            img_masked[:, :, i] = np.multiply(img[:, :, i], self.mask)
-        return img_masked
-    
-    
+        mask_3d: np.ndarray = np.repeat(self.mask[:, :, None], 3, axis=2)
+        return np.multiply(image, mask_3d)
+
     def get_image_masked(self) -> np.ndarray:
         """ @public
         Get the masked image
         """
-        return self.image_masked
-    
-    
-    @staticmethod
-    def getZ1(Z: np.ndarray) -> np.ndarray:
-        """ @public
-        Transforms a (N, M, 3) tensor to a (N, 3*M) tensor
-        Reverses ungetZ1
-        """
-        return np.hstack([np.array(Z[:, :, 0]), np.array(Z[:, :, 1]), np.array(Z[:, :, 2])])
+        return self.image_masked.copy()
 
-    
-    @staticmethod
-    def ungetZ1(Z1: np.ndarray) -> np.ndarray:
+    def get_erase_ratio(self) -> float:
         """ @public
-        Transforms a (N, 3*M) tensor to a (N, M, 3) tensor
-        Reverses getZ1
+        Returns the ratio of erased pixels
         """
-        N: int; M:int
-        N, M = Z1.shape
-        M //= 3
-        
-        Z: np.ndarray = np.zeros((N, M, 3))
-        Z[:, :, 0] = Z1[:, :M]
-        Z[:, :, 1] = Z1[:, M:2*M]
-        Z[:, :, 2] = Z1[:, 2*M:]
-        return Z
-    
-    
-    @staticmethod
-    def getZ2(Z: np.ndarray) -> np.ndarray:
-        """ @public
-        Transforms a (N, M, 3) tensor to a (3*N, M) tensor
-        Reverses ungetZ2
+        return self.__erase_ratio
+
+    def show(self):
         """
-        return np.vstack([np.array(Z[:, :, 0]), np.array(Z[:, :, 1]), np.array(Z[:, :, 2])])
-    
-    
-    @staticmethod
-    def ungetZ2(Z2: np.ndarray) -> np.ndarray:
-        """ @public
-        Transforms a (3*N, M) tensor to a (N, M, 3) tensor
-        Reverses getZ2
+        Prints the image to the console
         """
-        N, M = Z2.shape
-        N //= 3
-        
-        Z = np.zeros((N, M, 3))
-        Z[:, :, 0] = Z2[:N, :]
-        Z[:, :, 1] = Z2[N:2*N, :]
-        Z[:, :, 2] = Z2[2*N:, :]
-        return Z
-    
-    def visualize(self, 
-                  solution1: Tuple[np.ndarray, str], 
-                  solution2: Union[Tuple[np.ndarray, str], None] = None, 
+        fig, axs = plt.subplots(1, 2, dpi=600)
+        axs[0].title.set_text("Original Image")
+        axs[0].imshow(self.image, vmin=0, vmax=1)
+        axs[0].set_axis_off()
+        axs[1].title.set_text(f"Masked Image ({self.__erase_ratio * 100} %)")
+        axs[1].imshow(self.image_masked, vmin=0, vmax=1)
+        axs[1].set_axis_off()
+        plt.show()
+
+    def visualize(self,
+                  solution1: Tuple[np.ndarray, str],
+                  solution2: Union[Tuple[np.ndarray, str], None] = None,
                   title: str = "") -> None:
         """ @public
         Visualize the results by plotting the following three images:
@@ -150,9 +143,9 @@ class Image:
         fig, axs = plt.subplots(1, 4 if solution2 else 3, figsize=(12, 3.3 if solution2 else 4), dpi=600)
         fig.suptitle(title, fontsize=18)
         axs[0].title.set_text("Original Image")
-        axs[0].imshow(self.image_original)
+        axs[0].imshow(self.image)
         axs[0].set_axis_off()
-        axs[1].title.set_text(f"In-Painted Image ({self.ratio * 100} %)")
+        axs[1].title.set_text(f"In-Painted Image ({self.__erase_ratio * 100} %)")
         axs[1].imshow(self.image_masked)
         axs[1].set_axis_off()
         axs[2].title.set_text(solution1[1])
@@ -163,3 +156,41 @@ class Image:
             axs[3].imshow(solution2[0])
             axs[3].set_axis_off()
         plt.show()
+
+        
+class DeletedImage (MaskedImage):
+    """
+    Creates a mask and methods to mask images, as well as getting the specific mask
+    The image has a whole deleted section, as opposed to random deleted pixels
+    Parameters:
+    Public Methods:
+        mask_image                  Applies the mask to an image
+        get_image_masked            Returns the masked image
+        show                        Outputs the original and masked image
+    Private Methods:
+        create_mask                 Creates the mask to be applied
+    """
+
+    def __init__(self, image_string: str, 
+                 image_size: Tuple[int, int] = (0, 0)) -> None:
+        super().__init__(image_string, image_size, 0)
+        self.__erase_ratio: float = 0
+        self.create_mask()
+        self.image_masked: np.ndarray = self.mask_image(self.get_image())
+
+    def add_block(self, x: float, y: float, z: float, w: float) -> None:
+        """ @public
+        Adds a block to the mask
+        """
+        dimensions: List[int] = self.get_dimensions()
+        M, N = dimensions
+        self.mask[int(x*M):int(y*M), int(z*N):int(w*N)] = np.zeros_like(self.mask[int(x*M):int(y*M), int(z*N):int(w*N)])
+        self.image_masked: np.ndarray = self.mask_image(self.get_image())
+        
+    def create_mask(self) -> np.ndarray:
+        """ @private
+        Create the mask
+        """
+        dimensions: List[int] = self.get_dimensions()
+        M, N = dimensions
+        self.mask: np.ndarray = np.zeros((M, N)) + 1

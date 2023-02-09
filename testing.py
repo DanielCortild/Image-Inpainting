@@ -1,5 +1,7 @@
-# External Imports
 import numpy as np
 
-# Internal Imports
-from inpainter import *
+print("Hello")
+
+
+
+# from inpainter import MaskedImage, InPainter

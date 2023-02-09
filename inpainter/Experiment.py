@@ -10,13 +10,12 @@ import numpy as np
 import matplotlib.pyplot as plt     # type: ignore
 import time
 from tqdm.auto import trange        # type: ignore
-import pandas                       # type: ignore
 from tabulate import tabulate       # type: ignore
 from typing import List, Tuple
 
 # Internal Imports
 from .InPainter import InPainter
-from .Image import Image
+from .Image import MaskedImage
 
 
 class Experiment:
@@ -41,6 +40,7 @@ class Experiment:
         self.rho: float = 1
         self.ratio: float = 0.5
         self.legend_loc: int = 1
+        self.plot_min = True
 
     def __run_single(self, i: int, alpha_static: bool, max_it: int, tol: float) -> Tuple[int, float]:
         """ @private
@@ -53,10 +53,10 @@ class Experiment:
         if self.var_name == "rho":
             self.rho = var
             
-        Img: Image = Image(image="Houses.jpeg", ratio=self.ratio, resize=(512, 512))
+        Img: MaskedImage = MaskedImage(image_string="Houses.jpeg", image_size=(512, 512), erase_ratio=self.ratio)
         start: float = time.time()
-        IP: InPainter = InPainter(Img, alpha_static=alpha_static, lamb=self.lamb, rho=self.rho)
-        its: int = IP.run(max_it, tol)[1]
+        IP: InPainter = InPainter(Img, max_it, tol, verbose=False)
+        its: int = IP.run(rho=self.rho, lamb=self.lamb, alpha_static=alpha_static)[1]
         times: float = time.time() - start
         return its, times
     
@@ -73,7 +73,7 @@ class Experiment:
         for i in trange(len(self.var_list), unit=f"Value of {self.var_name}", desc="Static Alpha", leave=False):
             its_list_static[i], time_list_static[i] = self.__run_single(i, True, max_it, tol)
         
-        # Run the Ineratial Algorithm for every value of rho
+        # Run the Inertial Algorithm for every value of rho
         for i in trange(len(self.var_list), unit=f"Value of {self.var_name}", desc="Inertial Alpha", leave=False):
             its_list_inertial[i], time_list_inertial[i] = self.__run_single(i, False, max_it, tol)
             
@@ -101,47 +101,41 @@ class Experiment:
         axs[0].set_ylabel("Number of iterations")
         axs[0].plot(self.var_list, its_static, label="Static Iterations", color="g")
         axs[0].plot(self.var_list, its_inertial, label="Inertial Iterations", color="b")
-        axs[0].plot(self.var_list[np.argmin(its_static)], np.min(its_static), 'go')
-        axs[0].plot(self.var_list[np.argmin(its_inertial)], np.min(its_inertial), 'bo')
+        if self.plot_min:
+            axs[0].plot(self.var_list[np.argmin(its_static)], np.min(its_static), 'go')
+            axs[0].plot(self.var_list[np.argmin(its_inertial)], np.min(its_inertial), 'bo')
         axs[0].axhline(y=max_iterations, color="r", label="Did not converge", linestyle="--")
         axs[0].legend(loc=self.legend_loc)
-        
-        
+
         # Time plot
         axs[1].title.set_text(f"Time to reach {tolerance} tolerance")
         axs[1].set_xlabel(f"Value of {self.var_name}")
         axs[1].set_ylabel("Time in seconds")
-        axs[1].plot(self.var_list, times_static, label = "Static Iterations", color = "g")
-        axs[1].plot(self.var_list, times_inertial, label = "Ineratial Iterations", color = "b")
-        axs[1].plot(self.var_list[np.argmin(times_static)], np.min(times_static), 'go')
-        axs[1].plot(self.var_list[np.argmin(times_inertial)], np.min(times_inertial), 'bo')
+        axs[1].plot(self.var_list, times_static, label="Static Iterations", color="g")
+        axs[1].plot(self.var_list, times_inertial, label="Ineratial Iterations", color="b")
+        if self.plot_min:
+            axs[1].plot(self.var_list[np.argmin(times_static)], np.min(times_static), 'go')
+            axs[1].plot(self.var_list[np.argmin(times_inertial)], np.min(times_inertial), 'bo')
         axs[1].legend(loc = self.legend_loc)
         
         plt.show()
         
-    def __print(self, 
-                its_static: np.ndarray, 
-                its_inertial: np.ndarray, 
-                times_static: np.ndarray, 
-                times_inertial: np.ndarray) -> None:
+    def __print(self, run_return: List[np.ndarray]) -> None:
         """ @private
         Print the number of iterations and the time taken
         """
-        data: np.ndarray = np.zeros((len(self.var_list), 5))
-        data[:, 0] = self.var_list
-        data[:, 1] = its_static
-        data[:, 2] = times_static
-        data[:, 3] = its_inertial
-        data[:, 4] = times_inertial
-        print(tabulate(data, headers=[self.var_name, "Its Static", "Time Static", "Its Inertial", "Time Inertial"]))
+        data: np.ndarray = np.zeros((5, len(self.var_list)))
+        data[0, :] = self.var_list
+        data[1:, :] = run_return
+        print(tabulate(data.T, headers=[self.var_name, "Its Static", "Time Static", "Its Inertial", "Time Inertial"]))
         
     def run(self, max_iterations: int, tolerance: float, title: str = ""):
         """ @public
         Runs the experiment and prints out the resulting data
         """
-        its_static, its_inertial, times_static, times_inertial = self.__run(max_iterations, tolerance)
-        self.__plot(its_static, its_inertial, times_static, times_inertial, max_iterations, tolerance, title)
-        self.__print(its_static, its_inertial, times_static, times_inertial)
+        run_return = self.__run(max_iterations, tolerance)
+        self.__plot(*run_return, max_iterations, tolerance, title)
+        self.__print(run_return)
 
         
 class ExperimentRho (Experiment):
@@ -168,6 +162,7 @@ class ExperimentRho (Experiment):
         # Metadata for various plots and methods
         self.var_name: str = "rho"
         self.legend_loc: int = 1
+        self.plot_min = True
         
         
 class ExperimentRatio (Experiment):
@@ -194,6 +189,7 @@ class ExperimentRatio (Experiment):
         # Metadata for various plots and methods
         self.var_name: str = "ratio"
         self.legend_loc: int = 2
+        self.plot_min = False
 
 
 class ExperimentLambda (Experiment):
@@ -220,3 +216,4 @@ class ExperimentLambda (Experiment):
         # Metadata for various plots and methods
         self.var_name: str = "lambda"
         self.legend_loc: int = 2
+        self.plot_min = True
